@@ -1,15 +1,9 @@
-# Nest.js Serverless
-
-### Serverless HTTP route
-
-http://localhost:3001/dev/api
-
-```
 import serverlessExpress from '@codegenie/serverless-express';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Callback, Context, Handler } from 'aws-lambda';
 import { ReplaySubject } from 'rxjs';
+import { MessageProcessorService } from './message-processor.service';
 
 type EventPayload = {
   [key: string]: any;
@@ -29,7 +23,7 @@ async function bootstrap() {
 
 bootstrap().then((server) => serverSubject.next(server));
 
-export const handler: Handler = async (
+export const httpHandler: Handler = async (
   event: EventPayload,
   context: Context,
   callback: Callback,
@@ -39,9 +33,16 @@ export const handler: Handler = async (
   server = server ?? (await bootstrap());
   return server(event, context, callback);
 };
-```
 
-Run `serverless login`
-Run `sls offline`
-Run `npm run start:dev`
-Run `sls deploy`
+export const sqsHandler: Handler = async (
+  event: AWSLambda.SQSEvent,
+  context: Context,
+) => {
+  const app = await NestFactory.createApplicationContext(AppModule);
+  const messageProcessor = app.get(MessageProcessorService);
+
+  for (const record of event.Records) {
+    const message = JSON.parse(record.body);
+    await messageProcessor.processMessage(message);
+  }
+};

@@ -1,0 +1,40 @@
+org: rkavi26
+
+app: lambda-nestjs
+
+service: lambda-nestjs
+
+plugins:
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  timeout: 900
+  region: <region-id>
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'sqs:ReceiveMessage'
+      Resource:
+        - 'arn:aws:sqs:<region-id>:<account-id>:<queue-name>'
+
+functions:
+  HTTP:
+    handler: dist/main.httpHandler
+    events:
+      - http:
+          method: ANY
+          path: '/api'
+
+  SQS:
+    handler: dist/main.sqsHandler
+    events:
+      - sqs:
+          arn: arn:aws:sqs:<region-id>:<account-id>:<queue-name>
+          batchSize: 1
+          functionResponseType: ReportBatchItemFailures
+
+custom:
+  serverless-offline:
+    httpPort: 3001
